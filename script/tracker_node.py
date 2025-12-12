@@ -37,7 +37,6 @@ class TrackerNode:
         self.iou_thres = rospy.get_param("~iou_thres", 0.45)
         self.max_det = rospy.get_param("~max_det", 300)
         self.classes = rospy.get_param("~classes", None)
-        self.tracker = rospy.get_param("~tracker", "bytetrack.yaml")
         self.device = rospy.get_param("~device", None)
         self.result_conf = rospy.get_param("~result_conf", True)
         self.result_line_width = rospy.get_param("~result_line_width", None)
@@ -65,13 +64,12 @@ class TrackerNode:
     def image_callback(self, msg):
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
-        results = self.model.track(
+        results = self.model.predict(
             source=cv_image,
             conf=self.conf_thres,
             iou=self.iou_thres,
             max_det=self.max_det,
             classes=self.classes,
-            tracker=self.tracker,
             device=self.device,
             verbose=False,
             retina_masks=True,

@@ -21,7 +21,7 @@ import cv_bridge
 import numpy as np
 import roslib.packages
 import rospy
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage, Image
 from ultralytics import YOLO
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
 from ultralytics_ros.msg import YoloResult
@@ -56,7 +56,7 @@ class TrackerNode:
         )
         self.results_pub = rospy.Publisher(self.result_topic, YoloResult, queue_size=1)
         self.result_image_pub = rospy.Publisher(
-            self.result_image_topic, Image, queue_size=1
+            self.result_image_topic, CompressedImage, queue_size=1
         )
         self.bridge = cv_bridge.CvBridge()
         self.use_segmentation = yolo_model.endswith("-seg.pt")
@@ -77,11 +77,9 @@ class TrackerNode:
 
         if results is not None:
             yolo_result_msg = YoloResult()
-            yolo_result_image_msg = Image()
             yolo_result_msg.header = msg.header
-            yolo_result_image_msg.header = msg.header
             yolo_result_msg.detections = self.create_detections_array(results)
-            yolo_result_image_msg = self.create_result_image(results)
+            yolo_result_image_msg = self.create_result_image(results, msg.header)
             if self.use_segmentation:
                 yolo_result_msg.masks = self.create_segmentation_masks(results)
             self.results_pub.publish(yolo_result_msg)
@@ -105,7 +103,7 @@ class TrackerNode:
             detections_msg.detections.append(detection)
         return detections_msg
 
-    def create_result_image(self, results):
+    def create_result_image(self, results, header):
         plotted_image = results[0].plot(
             conf=self.result_conf,
             line_width=self.result_line_width,
@@ -114,7 +112,10 @@ class TrackerNode:
             labels=self.result_labels,
             boxes=self.result_boxes,
         )
-        result_image_msg = self.bridge.cv2_to_imgmsg(plotted_image, encoding="bgr8")
+        result_image_msg = self.bridge.cv2_to_compressed_imgmsg(
+            plotted_image, dst_format="jpg"
+        )
+        result_image_msg.header = header
         return result_image_msg
 
     def create_segmentation_masks(self, results):

@@ -22,6 +22,7 @@ import numpy as np
 import roslib.packages
 import rospy
 from sensor_msgs.msg import CompressedImage, Image
+from std_srvs.srv import SetBool, SetBoolResponse
 from ultralytics import YOLO
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
 from ultralytics_ros.msg import YoloResult
@@ -44,6 +45,7 @@ class TrackerNode:
         self.result_font = rospy.get_param("~result_font", "Arial.ttf")
         self.result_labels = rospy.get_param("~result_labels", True)
         self.result_boxes = rospy.get_param("~result_boxes", True)
+        self.enabled = rospy.get_param("~enabled", True)
         path = roslib.packages.get_pkg_dir("ultralytics_ros")
         self.model = YOLO(f"{path}/models/{yolo_model}")
         self.model.fuse()
@@ -60,8 +62,18 @@ class TrackerNode:
         )
         self.bridge = cv_bridge.CvBridge()
         self.use_segmentation = yolo_model.endswith("-seg.pt")
+        self.enable_srv = rospy.Service("~enable", SetBool, self.enable_callback)
+
+    def enable_callback(self, req):
+        self.enabled = req.data
+        message = "YOLO inference " + ("enabled" if self.enabled else "disabled")
+        rospy.loginfo(message)
+        return SetBoolResponse(success=True, message=message)
 
     def image_callback(self, msg):
+        if not self.enabled:
+            return
+
         cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
         results = self.model.predict(

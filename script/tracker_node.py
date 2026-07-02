@@ -21,7 +21,7 @@ import cv_bridge
 import numpy as np
 import roslib.packages
 import rospy
-from sensor_msgs.msg import CompressedImage, Image
+from sensor_msgs.msg import Image
 from std_srvs.srv import SetBool, SetBoolResponse
 from ultralytics import YOLO
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
@@ -58,7 +58,7 @@ class TrackerNode:
         )
         self.results_pub = rospy.Publisher(self.result_topic, YoloResult, queue_size=1)
         self.result_image_pub = rospy.Publisher(
-            self.result_image_topic, CompressedImage, queue_size=1
+            self.result_image_topic, Image, queue_size=1
         )
         self.bridge = cv_bridge.CvBridge()
         self.use_segmentation = yolo_model.endswith("-seg.pt")
@@ -124,9 +124,7 @@ class TrackerNode:
             labels=self.result_labels,
             boxes=self.result_boxes,
         )
-        result_image_msg = self.bridge.cv2_to_compressed_imgmsg(
-            plotted_image, dst_format="jpg"
-        )
+        result_image_msg = self.bridge.cv2_to_imgmsg(plotted_image, encoding="bgr8")
         result_image_msg.header = header
         return result_image_msg
 

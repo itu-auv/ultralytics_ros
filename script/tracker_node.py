@@ -101,6 +101,7 @@ class TrackerNode:
             classes=self.classes,
             device=self.device,
             verbose=False,
+            retina_masks=True,
         )
 
         if results is not None:

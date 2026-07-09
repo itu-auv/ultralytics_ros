@@ -22,10 +22,17 @@ import numpy as np
 import roslib.packages
 import rospy
 from sensor_msgs.msg import CompressedImage, Image
+from std_msgs.msg import Bool
 from std_srvs.srv import SetBool, SetBoolResponse
 from ultralytics import YOLO
 from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
 from ultralytics_ros.msg import YoloResult
+
+if not hasattr(np, "bool"):
+    np.bool = bool
+
+np.bool = bool
+np.object = object
 
 
 class TrackerNode:
@@ -47,8 +54,10 @@ class TrackerNode:
         self.result_boxes = rospy.get_param("~result_boxes", True)
         self.enabled = rospy.get_param("~enabled", True)
         path = roslib.packages.get_pkg_dir("ultralytics_ros")
+        is_engine = yolo_model.lower().endswith(".engine")
         self.model = YOLO(f"{path}/models/{yolo_model}")
-        self.model.fuse()
+        if not is_engine:
+            self.model.fuse()
         self.sub = rospy.Subscriber(
             self.input_topic,
             Image,
@@ -60,15 +69,23 @@ class TrackerNode:
         self.result_image_pub = rospy.Publisher(
             self.result_image_topic, CompressedImage, queue_size=1
         )
+        self.enabled_pub = rospy.Publisher("~enabled", Bool, queue_size=1, latch=True)
         self.bridge = cv_bridge.CvBridge()
-        self.use_segmentation = yolo_model.endswith("-seg.pt")
+        self.use_segmentation = yolo_model.lower().endswith(("-seg.pt", "-seg.engine"))
         self.enable_srv = rospy.Service("~enable", SetBool, self.enable_callback)
+        self._publish_enabled_status()
 
     def enable_callback(self, req):
         self.enabled = req.data
-        message = "YOLO inference " + ("enabled" if self.enabled else "disabled")
+        self._publish_enabled_status()
+        message = f"YOLO inference {self.result_topic} " + (
+            "enabled" if self.enabled else "disabled"
+        )
         rospy.loginfo(message)
         return SetBoolResponse(success=True, message=message)
+
+    def _publish_enabled_status(self):
+        self.enabled_pub.publish(Bool(data=self.enabled))
 
     def image_callback(self, msg):
         if not self.enabled:

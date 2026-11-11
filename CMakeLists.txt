@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.16)
 project(ultralytics_ros)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -23,7 +23,7 @@ find_package(pcl_conversions REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV REQUIRED COMPONENTS core)
 find_package(PCL REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
@@ -37,21 +37,21 @@ rosidl_generate_interfaces(${PROJECT_NAME}
 include_directories(include)
 
 add_executable(tracker_with_cloud_node src/tracker_with_cloud_node.cpp)
-ament_target_dependencies(tracker_with_cloud_node
-  rclcpp
-  geometry_msgs
-  sensor_msgs
-  std_msgs
-  vision_msgs
-  visualization_msgs
-  cv_bridge
-  image_geometry
-  message_filters
-  pcl_ros
-  tf2_eigen
-  tf2_ros
-  OpenCV
-  PCL
+target_link_libraries(tracker_with_cloud_node
+  rclcpp::rclcpp
+  ${geometry_msgs_TARGETS}
+  ${sensor_msgs_TARGETS}
+  ${std_msgs_TARGETS}
+  ${vision_msgs_TARGETS}
+  ${visualization_msgs_TARGETS}
+  cv_bridge::cv_bridge
+  image_geometry::image_geometry
+  message_filters::message_filters
+  pcl_ros::pcl_ros_tf
+  tf2_eigen::tf2_eigen
+  tf2_ros::tf2_ros
+  opencv_core
+  ${PCL_LIBRARIES}
 )
 
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
